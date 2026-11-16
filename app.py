@@ -195,7 +195,7 @@ importance = pd.DataFrame({
 }).sort_values("Relative model importance", ascending=False)
 st.subheader("Which inputs influenced the model most?")
 st.bar_chart(importance.set_index("Measurement"))
-st.caption("Best settings selected by five-fold cross-validation: " + str(metrics["best_params"]))
+st.caption("Runtime model: Random Forest with 200 trees, sqrt feature selection and minimum leaf size of 2. A fixed configuration keeps app startup manageable.")
 
 st.divider()
 st.header("About the dataset")
