@@ -3,7 +3,7 @@
 Neer is an educational software prototype exploring how multiple water-quality measurements can be analysed together using a Random Forest classifier.
 
 ## Included
-- Streamlit dashboard with four virtual measurement controls.
+- Streamlit dashboard with nine virtual measurement controls.
 - Random Forest model trained on a public water-potability dataset.
 - Held-out test metrics: accuracy, precision, recall and F1.
 - Feature-importance chart and simulated-input analysis.
@@ -23,7 +23,7 @@ The first run downloads the CSV into data/water_quality.csv. The trained model a
 4. Deploy. Streamlit installs dependencies from requirements.txt and the app downloads the dataset and trains the model on first launch.
 
 ## Dataset
-The app uses these four columns: ph, Solids, Conductivity and Turbidity.
+The app uses all nine measurement columns: ph, Hardness, Solids, Chloramines, Sulfate, Conductivity, Organic_carbon, Trihalomethanes and Turbidity. It selects Random Forest settings using five-fold cross-validation on the training split, then reports metrics on a separate held-out test split.
 Dataset mirror: https://github.com/sudesokin/Water-Quality-Analysis-and-Forecasting/blob/main/dataset/water_potability.csv
 
 The dataset calls its dissolved material feature Solids. Neer preserves that original name and does not claim it is a direct TDS sensor reading.
