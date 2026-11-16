@@ -84,6 +84,45 @@ st.markdown("<h5 style='color:#087e8b;letter-spacing:3px'>NEER · WATER INTELLIG
 st.title("See the patterns. Understand the water.")
 st.write("An AI-powered demonstration that analyses multiple water-quality measurements together.")
 
+# Clickable explanations for technical terms used throughout the prototype.
+TERMS = [
+    ("pH", "A scale describing how acidic or alkaline water is. 7 is neutral; lower values are acidic and higher values are alkaline.", "The value is measured from chemical properties of a water sample. In this demo, the model uses the pH number as one input feature.", "Move the pH slider to try different values, then select Analyse combined readings. The slider is simulated, not connected to a real pH sensor."),
+    ("Solids", "A dataset measurement representing the amount of dissolved and suspended material recorded for a sample. The original dataset calls this field Solids.", "The model learns patterns between this recorded number and the dataset's potable/not-potable labels. It is not automatically the same as a direct TDS sensor reading.", "Use the Solids slider to explore how changing this dataset field affects the model output."),
+    ("Electrical conductivity", "A measure of how easily water carries an electrical current. Dissolved ions often increase conductivity.", "The dataset records conductivity as a numeric measurement. The model compares it with patterns learned from other samples.", "Adjust the Electrical conductivity slider. The displayed unit is microsiemens per centimetre (µS/cm)."),
+    ("Turbidity", "A measure of how cloudy or unclear water is because of particles suspended in it.", "A turbidity meter commonly measures how light is scattered by particles. Here, the dataset value is supplied to the model.", "Adjust the Turbidity slider. NTU means Nephelometric Turbidity Units."),
+    ("Random Forest", "A machine-learning method that combines many decision trees instead of relying on just one.", "Each tree makes a classification using learned rules. The forest combines the trees' votes to produce an overall class.", "You do not need to operate the forest directly. Change the four readings and click Analyse combined readings to see its output."),
+    ("Machine learning", "A way for a computer to learn patterns from examples rather than having every decision written as a fixed rule.", "Neer is trained on labelled historical water-sample records. It learns relationships between the four measurements and the dataset label.", "Try different slider combinations and compare the results. This is an educational model, not a real-world water test."),
+    ("Dataset", "A collection of records organised for analysis. Each row in this dataset represents a historical water sample.", "The training process reads measurement columns and the Potability label, then uses the examples to train and evaluate the model.", "The dataset record count appears at the top. Use the dataset source link near the bottom to inspect the original public dataset."),
+    ("Potable", "Suitable for drinking according to the label used in the source dataset.", "The dataset uses 1 for its potable class and 0 for its not-potable class. The model learns to assign one of these two labels.", "Read the result as the class the model selected for the simulated inputs, not as confirmation that water is safe."),
+    ("Classifier", "A machine-learning model that sorts an input into one of a set of categories.", "Neer's classifier receives the four measurement values and assigns the input to one of the two dataset classes.", "Click Analyse combined readings after setting the sliders to view the predicted class."),
+    ("Training data", "The part of the dataset used to teach the model patterns.", "The training portion contains examples with measurements and known dataset labels. The model adjusts its internal decision patterns using these examples.", "You do not need to select it manually; Neer prepares the training data when the app loads."),
+    ("Test split", "A separate portion of the dataset held back to check how the trained model performs on examples it did not train on.", "Neer uses an 80/20 train/test split. The test portion is used to calculate the performance metrics shown on the dashboard.", "Use the performance section to view the scores from this held-out portion. They describe this dataset split only."),
+    ("Accuracy", "The percentage of test examples the model classified correctly overall.", "It is calculated as correct predictions divided by all test predictions.", "Read it as a broad summary, alongside precision, recall and F1 score. A high accuracy alone does not prove the model is reliable for every sample."),
+    ("Precision", "Of the samples the model labelled potable, the proportion that actually had the potable label in the test data.", "It measures how often positive predictions were correct on the held-out test split.", "Compare it with recall to understand different kinds of model errors. It is not a guarantee about real drinking water."),
+    ("Recall", "Of the samples labelled potable in the test data, the proportion the model successfully identified as potable.", "It measures how many actual positive examples were found by the model.", "Read it together with precision. Neither metric replaces laboratory testing or official water-quality checks."),
+    ("F1 score", "A single score that balances precision and recall.", "It is the harmonic mean of precision and recall, so it becomes lower when either one is low.", "Use it as a combined comparison measure in the model-performance section."),
+    ("Imputation", "A way to fill in missing data values so a model can still process a record.", "Neer uses median imputation: a missing measurement is replaced with the median value for that feature in the training data.", "This happens automatically during model preparation. It is not a reading supplied by a sensor."),
+    ("Feature importance", "An estimate of how much each input measurement helped the trained Random Forest make its decisions.", "The model calculates importance from how its decision trees use each feature. The chart ranks the four inputs by this estimate.", "Look at the feature-importance chart to compare inputs. Importance does not prove cause and effect."),
+    ("Model score", "The model's score for the class it selected for the current simulated input.", "The Random Forest combines estimates from its trees to produce class scores. The app displays the score for the selected class.", "View it after clicking Analyse combined readings. It is not the probability that a real water sample is safe."),
+    ("Simulated readings", "Example numbers entered manually to demonstrate how the app works. They are not collected from a live water sensor.", "The sliders create a sample row that is passed to the trained model as if it were a measurement record.", "Move the sliders to explore different combinations, then click Analyse combined readings."),
+    ("µS/cm", "Microsiemens per centimetre, a unit used for electrical conductivity.", "It expresses how readily a material conducts electricity over a standardised distance.", "The conductivity slider displays this unit beside its label."),
+    ("NTU", "Nephelometric Turbidity Units, a unit used to report turbidity.", "A nephelometric instrument estimates cloudiness by measuring light scattered by particles in a sample.", "The turbidity slider displays this unit beside its label.")
+]
+
+st.divider()
+st.header("Explore the technical terms")
+st.write("Click any term to open a short explanation of what it means, how it works in Neer, and how to use it.")
+term_columns = st.columns(3)
+for index, (term, meaning, works, usage) in enumerate(TERMS):
+    with term_columns[index % 3]:
+        with st.popover(term, use_container_width=True):
+            st.markdown("**What it means**")
+            st.write(meaning)
+            st.markdown("**How it works in Neer**")
+            st.write(works)
+            st.markdown("**How to use it**")
+            st.write(usage)
+
 with st.sidebar:
     st.header("About Neer")
     st.write("Neer explores how several water-quality measurements can be analysed together using machine learning.")
