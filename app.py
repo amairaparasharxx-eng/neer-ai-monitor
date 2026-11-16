@@ -23,7 +23,16 @@ st.markdown("""
 <style>
 .main {background:#f5f9fc}
 .block-container {max-width:1180px;padding-top:2rem}
-div[data-testid="stMetric"] {background:white;padding:14px;border-radius:12px;border:1px solid #e2edf2}
+div[data-testid="stMetric"] {
+    background:white !important;
+    color:#17324d !important;
+    padding:14px;
+    border-radius:12px;
+    border:1px solid #e2edf2;
+}
+div[data-testid="stMetric"] * {
+    color:#17324d !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
