@@ -1,13 +1,11 @@
-import json
 from pathlib import Path
 
-import joblib
 import pandas as pd
 import streamlit as st
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
+from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
 DATA_URL = "https://raw.githubusercontent.com/sudesokin/Water-Quality-Analysis-and-Forecasting/main/dataset/water_potability.csv"
@@ -15,7 +13,6 @@ FEATURES = ["ph", "Hardness", "Solids", "Chloramines", "Sulfate", "Conductivity"
 TARGET = "Potability"
 ROOT = Path(__file__).resolve().parent
 DATA_PATH = ROOT / "data" / "water_quality.csv"
-MODEL_PATH = ROOT / "model" / "neer_model.joblib"
 
 st.set_page_config(page_title="Neer | Water Intelligence", page_icon="💧", layout="wide")
 
@@ -60,25 +57,20 @@ def prepare_model():
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
+    # Keep startup lightweight for Streamlit Community Cloud:
+    # fit one fixed model instead of running a large grid search on every cold start.
     pipeline = Pipeline([
         ("imputer", SimpleImputer(strategy="median")),
-        ("classifier", RandomForestClassifier(random_state=42, n_jobs=-1, class_weight="balanced"))
+        ("classifier", RandomForestClassifier(
+            n_estimators=200,
+            max_features="sqrt",
+            min_samples_leaf=2,
+            random_state=42,
+            n_jobs=1,
+            class_weight="balanced"
+        ))
     ])
-    # Tune settings using training data only; keep the held-out test set untouched.
-    search = GridSearchCV(
-        pipeline,
-        {
-            "classifier__n_estimators": [250, 400],
-            "classifier__max_features": ["sqrt", 0.8],
-            "classifier__min_samples_leaf": [1, 2, 4]
-        },
-        scoring="f1",
-        cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=42),
-        n_jobs=-1,
-        refit=True
-    )
-    search.fit(X_train, y_train)
-    pipeline = search.best_estimator_
+    pipeline.fit(X_train, y_train)
     pred = pipeline.predict(X_test)
     metrics = {
         "rows": len(df),
@@ -86,11 +78,7 @@ def prepare_model():
         "precision": precision_score(y_test, pred, pos_label=1, zero_division=0),
         "recall": recall_score(y_test, pred, pos_label=1, zero_division=0),
         "f1": f1_score(y_test, pred, pos_label=1, zero_division=0),
-        "best_cv_f1": search.best_score_,
-        "best_params": search.best_params_
     }
-    MODEL_PATH.parent.mkdir(exist_ok=True)
-    joblib.dump(pipeline, MODEL_PATH)
     return pipeline, metrics
 
 st.markdown("<h5 style='color:#087e8b;letter-spacing:3px'>NEER · WATER INTELLIGENCE</h5>", unsafe_allow_html=True)
