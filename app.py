@@ -7,11 +7,11 @@ import streamlit as st
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
 from sklearn.pipeline import Pipeline
 
 DATA_URL = "https://raw.githubusercontent.com/sudesokin/Water-Quality-Analysis-and-Forecasting/main/dataset/water_potability.csv"
-FEATURES = ["ph", "Solids", "Conductivity", "Turbidity"]
+FEATURES = ["ph", "Hardness", "Solids", "Chloramines", "Sulfate", "Conductivity", "Organic_carbon", "Trihalomethanes", "Turbidity"]
 TARGET = "Potability"
 ROOT = Path(__file__).resolve().parent
 DATA_PATH = ROOT / "data" / "water_quality.csv"
@@ -62,19 +62,32 @@ def prepare_model():
     )
     pipeline = Pipeline([
         ("imputer", SimpleImputer(strategy="median")),
-        ("classifier", RandomForestClassifier(
-            n_estimators=300, min_samples_leaf=2,
-            class_weight="balanced", random_state=42, n_jobs=-1
-        ))
+        ("classifier", RandomForestClassifier(random_state=42, n_jobs=-1, class_weight="balanced"))
     ])
-    pipeline.fit(X_train, y_train)
+    # Tune settings using training data only; keep the held-out test set untouched.
+    search = GridSearchCV(
+        pipeline,
+        {
+            "classifier__n_estimators": [250, 400],
+            "classifier__max_features": ["sqrt", 0.8],
+            "classifier__min_samples_leaf": [1, 2, 4]
+        },
+        scoring="f1",
+        cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=42),
+        n_jobs=-1,
+        refit=True
+    )
+    search.fit(X_train, y_train)
+    pipeline = search.best_estimator_
     pred = pipeline.predict(X_test)
     metrics = {
         "rows": len(df),
         "accuracy": accuracy_score(y_test, pred),
-        "precision": precision_score(y_test, pred, zero_division=0),
-        "recall": recall_score(y_test, pred, zero_division=0),
-        "f1": f1_score(y_test, pred, zero_division=0)
+        "precision": precision_score(y_test, pred, pos_label=1, zero_division=0),
+        "recall": recall_score(y_test, pred, pos_label=1, zero_division=0),
+        "f1": f1_score(y_test, pred, pos_label=1, zero_division=0),
+        "best_cv_f1": search.best_score_,
+        "best_params": search.best_params_
     }
     MODEL_PATH.parent.mkdir(exist_ok=True)
     joblib.dump(pipeline, MODEL_PATH)
@@ -82,7 +95,7 @@ def prepare_model():
 
 st.markdown("<h5 style='color:#087e8b;letter-spacing:3px'>NEER · WATER INTELLIGENCE</h5>", unsafe_allow_html=True)
 st.title("See the patterns. Understand the water.")
-st.write("An AI-powered demonstration that analyses multiple water-quality measurements together.")
+st.write("An AI-powered demonstration that analyses nine water-quality measurements together.")
 
 # Clickable explanations for technical terms used throughout the prototype.
 TERMS = [
@@ -91,12 +104,12 @@ TERMS = [
     ("Electrical conductivity", "A measure of how easily water carries an electrical current. Dissolved ions often increase conductivity.", "The dataset records conductivity as a numeric measurement. The model compares it with patterns learned from other samples.", "Adjust the Electrical conductivity slider. The displayed unit is microsiemens per centimetre (µS/cm)."),
     ("Turbidity", "A measure of how cloudy or unclear water is because of particles suspended in it.", "A turbidity meter commonly measures how light is scattered by particles. Here, the dataset value is supplied to the model.", "Adjust the Turbidity slider. NTU means Nephelometric Turbidity Units."),
     ("Random Forest", "A machine-learning method that combines many decision trees instead of relying on just one.", "Each tree makes a classification using learned rules. The forest combines the trees' votes to produce an overall class.", "You do not need to operate the forest directly. Change the four readings and click Analyse combined readings to see its output."),
-    ("Machine learning", "A way for a computer to learn patterns from examples rather than having every decision written as a fixed rule.", "Neer is trained on labelled historical water-sample records. It learns relationships between the four measurements and the dataset label.", "Try different slider combinations and compare the results. This is an educational model, not a real-world water test."),
+    ("Machine learning", "A way for a computer to learn patterns from examples rather than having every decision written as a fixed rule.", "Neer is trained on labelled historical water-sample records. It learns relationships between the nine measurements and the dataset label.", "Try different slider combinations and compare the results. This is an educational model, not a real-world water test."),
     ("Dataset", "A collection of records organised for analysis. Each row in this dataset represents a historical water sample.", "The training process reads measurement columns and the Potability label, then uses the examples to train and evaluate the model.", "The dataset record count appears at the top. Use the dataset source link near the bottom to inspect the original public dataset."),
     ("Potable", "Suitable for drinking according to the label used in the source dataset.", "The dataset uses 1 for its potable class and 0 for its not-potable class. The model learns to assign one of these two labels.", "Read the result as the class the model selected for the simulated inputs, not as confirmation that water is safe."),
     ("Classifier", "A machine-learning model that sorts an input into one of a set of categories.", "Neer's classifier receives the four measurement values and assigns the input to one of the two dataset classes.", "Click Analyse combined readings after setting the sliders to view the predicted class."),
     ("Training data", "The part of the dataset used to teach the model patterns.", "The training portion contains examples with measurements and known dataset labels. The model adjusts its internal decision patterns using these examples.", "You do not need to select it manually; Neer prepares the training data when the app loads."),
-    ("Test split", "A separate portion of the dataset held back to check how the trained model performs on examples it did not train on.", "Neer uses an 80/20 train/test split. The test portion is used to calculate the performance metrics shown on the dashboard.", "Use the performance section to view the scores from this held-out portion. They describe this dataset split only."),
+    ("Test split", "A separate portion of the dataset held back to check how the trained model performs on examples it did not train on.", "Neer uses an 80/20 train/test split. It selects model settings using five-fold cross-validation on the training portion, then uses the held-out test portion for final metrics.", "Use the performance section to view the scores from this held-out portion. They describe this dataset split only."),
     ("Accuracy", "The percentage of test examples the model classified correctly overall.", "It is calculated as correct predictions divided by all test predictions.", "Read it as a broad summary, alongside precision, recall and F1 score. A high accuracy alone does not prove the model is reliable for every sample."),
     ("Precision", "Of the samples the model labelled potable, the proportion that actually had the potable label in the test data.", "It measures how often positive predictions were correct on the held-out test split.", "Compare it with recall to understand different kinds of model errors. It is not a guarantee about real drinking water."),
     ("Recall", "Of the samples labelled potable in the test data, the proportion the model successfully identified as potable.", "It measures how many actual positive examples were found by the model.", "Read it together with precision. Neither metric replaces laboratory testing or official water-quality checks."),
@@ -125,7 +138,7 @@ for index, (term, meaning, works, usage) in enumerate(TERMS):
 
 with st.sidebar:
     st.header("About Neer")
-    st.write("Neer explores how several water-quality measurements can be analysed together using machine learning.")
+    st.write("Neer explores how nine water-quality measurements can be analysed together using machine learning.")
     st.info("Prototype mode: all readings entered here are simulated.")
     st.write("Model: Random Forest classifier")
 
@@ -148,14 +161,21 @@ st.write("Change the simulated readings and analyse their combined pattern.")
 left, right = st.columns(2)
 with left:
     ph = st.slider("pH", 0.0, 14.0, 7.0, 0.1)
+    hardness = st.slider("Hardness", 47.0, 323.0, 196.0, 1.0)
     solids = st.slider("Solids (dataset units)", 0.0, 60000.0, 20000.0, 100.0)
+    chloramines = st.slider("Chloramines", 0.0, 14.0, 7.0, 0.1)
+    sulfate = st.slider("Sulfate", 129.0, 481.0, 334.0, 1.0)
 with right:
     conductivity = st.slider("Electrical conductivity (µS/cm)", 0.0, 800.0, 425.0, 5.0)
+    organic_carbon = st.slider("Organic carbon", 2.0, 28.0, 14.0, 0.1)
+    trihalomethanes = st.slider("Trihalomethanes", 0.0, 125.0, 66.0, 1.0)
     turbidity = st.slider("Turbidity (NTU)", 0.0, 10.0, 3.5, 0.1)
 
 readings = pd.DataFrame([{
-    "ph": ph, "Solids": solids,
-    "Conductivity": conductivity, "Turbidity": turbidity
+    "ph": ph, "Hardness": hardness, "Solids": solids,
+    "Chloramines": chloramines, "Sulfate": sulfate,
+    "Conductivity": conductivity, "Organic_carbon": organic_carbon,
+    "Trihalomethanes": trihalomethanes, "Turbidity": turbidity
 }], columns=FEATURES)
 
 if st.button("Analyse combined readings", type="primary", use_container_width=True):
@@ -174,7 +194,7 @@ if st.button("Analyse combined readings", type="primary", use_container_width=Tr
 
 st.divider()
 st.header("How the model performed")
-st.write("Metrics below describe performance on a held-out test split from this dataset only.")
+st.write("Metrics below describe performance on a held-out test split from this dataset only. Model settings are selected using five-fold cross-validation on the training data.")
 chart = pd.DataFrame({
     "Metric": ["Accuracy", "Precision", "Recall", "F1 score"],
     "Score": [metrics["accuracy"], metrics["precision"], metrics["recall"], metrics["f1"]]
@@ -187,6 +207,7 @@ importance = pd.DataFrame({
 }).sort_values("Relative model importance", ascending=False)
 st.subheader("Which inputs influenced the model most?")
 st.bar_chart(importance.set_index("Measurement"))
+st.caption("Best settings selected by five-fold cross-validation: " + str(metrics["best_params"]))
 
 st.divider()
 st.header("About the dataset")
