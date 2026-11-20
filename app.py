@@ -57,8 +57,6 @@ def prepare_model():
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
-    # Keep startup lightweight for Streamlit Community Cloud:
-    # fit one fixed model instead of running a large grid search on every cold start.
     pipeline = Pipeline([
         ("imputer", SimpleImputer(strategy="median")),
         ("classifier", RandomForestClassifier(
@@ -85,7 +83,6 @@ st.markdown("<h5 style='color:#087e8b;letter-spacing:3px'>NEER · WATER INTELLIG
 st.title("See the patterns. Understand the water.")
 st.write("An AI-powered demonstration that analyses nine water-quality measurements together.")
 
-# Clickable explanations for technical terms used throughout the prototype.
 TERMS = [
     ("pH", "A scale describing how acidic or alkaline water is. 7 is neutral; lower values are acidic and higher values are alkaline.", "The value is measured from chemical properties of a water sample. In this demo, the model uses the pH number as one input feature.", "Move the pH slider to try different values, then select Analyse combined readings. The slider is simulated, not connected to a real pH sensor."),
     ("Solids", "A dataset measurement representing the amount of dissolved and suspended material recorded for a sample. The original dataset calls this field Solids.", "The model learns patterns between this recorded number and the dataset's potable/not-potable labels. It is not automatically the same as a direct TDS sensor reading.", "Use the Solids slider to explore how changing this dataset field affects the model output."),
